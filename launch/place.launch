@@ -1,0 +1,7 @@
+<launch>
+
+  <node name="place" type="ycb_place.py" pkg="final_year_pkg" />
+
+  <node name="ycb_pose_detect" type="ycb_object_pose_estimate.py" pkg="final_year_pkg" />
+
+</launch>

@@ -1,0 +1,102 @@
+<launch>
+  
+  <!-- Load hand geometry parameters -->  
+  <include file="$(find gpd)/launch/tiago_hand.launch">
+    <arg name="node" value="detect_grasps" />
+  </include>
+  
+  <!-- Load classifier parameters -->  
+  <include file="$(find gpd)/launch/caffe/classifier_15channels.launch">
+    <arg name="node" value="detect_grasps" />
+  </include>
+  
+	<node name="detect_grasps" pkg="gpd" type="detect_grasps" output="screen">
+    
+    <!-- If sequential importance sampling is used (default: false) -->
+    <param name="use_importance_sampling" value="false" />
+        
+    <!-- What type of point cloud is used and what ROS topic it comes from -->
+    <param name="cloud_type" value="0" /> <!-- 0: PointCloud2, 1: CloudSized, 2: CloudIndexed, 3: CloudSamples -->
+    <param name="cloud_topic" value="/segment_table/nonplane" />
+    
+    <!-- (optional) The ROS topic that the samples come from (default: an empty string) -->
+    <param name="samples_topic" value="" />
+    
+    <!-- Plotting parameters -->
+    <param name="plot_normals" value="false" />
+    <param name="plot_samples" value="false" />    
+    <param name="plot_candidates" value="false" />
+    <param name="plot_filtered_grasps" value="false" />
+    <param name="plot_valid_grasps" value="false" />
+    <param name="plot_clusters" value="false" />
+    <param name="plot_selected_grasps" value="false" />
+    <param name="rviz_topic" value="grasps_rviz" />
+    
+    <!-- Preprocessing of point cloud -->
+    <param name="voxelize" value="true"/>
+    <param name="remove_outliers" value="false"/>
+    <rosparam param="workspace"> [-1, 1, -1, 1, -1, 1] </rosparam>
+    <rosparam param="camera_position"> [0, 0, 0] </rosparam>
+            
+    <!-- General parameters -->
+    <param name="num_samples" value="100" />
+    <param name="num_threads" value="4" />
+    
+    <!-- Parameters for local grasp candidate search -->
+    <param name="nn_radius" value="0.01" />
+    <param name="num_orientations" value="8" /> <!-- Number of orientations to consider -->
+    
+    <!-- Filtering of grasp candidates --> 
+    <param name="filter_grasps" value="false" /> <!-- on workspace and robot hand aperture -->
+    <rosparam param="workspace_grasps"> [0.55, 1.0, -0.41, 0.03, -0.29, 1.0] </rosparam>
+    <param name="filter_half_antipodal" value="false"/> <!-- on half antipodal -->
+    
+    <!-- Grasp image creation -->
+    <param name="create_image_batches" value="false" /> <!-- creates grasp images in batches (less memory usage) -->
+    <param name="remove_plane_before_image_calculation" value="false" /> <!-- removes table plane from point cloud to speed up shadow computations -->
+    
+    <!-- Clustering of grasps -->
+    <param name="min_inliers" value="1" />
+        
+    <!-- Grasp selection -->
+    <param name="min_score_diff" value="0" />
+    <param name="min_aperture" value="0.029" />
+    <param name="max_aperture" value="0.072" />
+    <param name="num_selected" value="5" />
+
+    <param name="use_gpu" value="false" />
+        
+	</node>
+
+  <arg name="rate"                      default="1"                               />
+  <arg name="cloud"                     default="/xtion/depth_registered/points"  />
+  <arg name="frame"                     default="/base_footprint"                 />
+  <arg name="passthrough_axis"          default="z"                               />
+  <arg name="passthrough_min"           default="0.4"                             />
+  <arg name="passthrough_max"           default="1.6"                             />
+  <arg name="downsampling_size"         default="0.01"                            />
+  <arg name="show_rviz"                 default="true"                            />
+
+  <node name="segment_table" pkg="tiago_pcl_tutorial" type="segment_table" output="screen">
+    <remap from="cloud"                     to="$(arg cloud)"     />
+    <param name="rate"                      type="double" value="$(arg rate)"  />
+    <param name="frame"                     type="string" value="$(arg frame)"  />
+    <param name="passthrough_axis"          type="string" value="$(arg passthrough_axis)"  />
+    <param name="passthrough_min"           type="double" value="$(arg passthrough_min)"   />
+    <param name="passthrough_max"           type="double" value="$(arg passthrough_max)"   />
+    <param name="downsampling_size"         type="double" value="$(arg downsampling_size)" />
+  </node>
+
+  <node name="image_throttler" type="throttle" pkg="topic_tools" args="messages /xtion/rgb/image_raw 0.2 /filtered_image" />
+
+  <node name="pcl_throttler" type="throttle" pkg="topic_tools" args="messages /xtion/depth_registered/points 2  /throttle_filtering_points/filtered_points" />
+  
+  <node name="look_around" type="look_around.py" pkg="final_year_pkg" />
+
+  <rosparam command="load" file="$(find tiago_moveit_tutorial)/config/tiago_octomap_motions.yaml" />
+
+  <node name="held_object_pub" type="ycb_held_object_pub.py" pkg="final_year_pkg" />
+
+  <node name="held_object_detect" type="ycb_held_object_detect.py" pkg="final_year_pkg" />
+
+</launch>

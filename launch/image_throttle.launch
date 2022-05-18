@@ -1,0 +1,3 @@
+<launch>
+  <node name="image_throttler" type="throttle" pkg="topic_tools" args="messages /xtion/rgb/image_raw 0.2 /filtered_image" />
+</launch>
